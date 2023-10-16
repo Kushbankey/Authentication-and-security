@@ -3,8 +3,9 @@ import 'dotenv/config';
 import express from "express";
 import bodyParser from "body-parser";
 import ejs from "ejs";
-import mongoose from "mongoose"
-import encrypt from "mongoose-encryption";
+import mongoose from "mongoose";
+import bcrypt from "bcrypt";
+const saltRounds=10;
 
 const port=3000;
 const app= express();
@@ -20,8 +21,6 @@ const userSchema= new mongoose.Schema({
     password: String
 });
 
-userSchema.plugin(encrypt, { secret: process.env.SECRET, encryptedFields: ["password"] });
-
 const User= new mongoose.model("User", userSchema);
 
 app.get("/", function(req,res){
@@ -36,20 +35,22 @@ app.get("/register", function(req,res){
     res.render("register");
 });
 
-app.post("/register", async function(req,res){
-    const newUser= new User({
-        email: req.body.username,
-        password: req.body.password
+app.post("/register", function(req,res){
+    bcrypt.hash(req.body.password, saltRounds,async function(err, hash) {
+        const newUser= new User({
+            email: req.body.username,
+            password: hash
+        });
+    
+        try{
+            await newUser.save();
+    
+            res.render("secrets");
+        }
+        catch(error){
+            console.log(error);
+        }
     });
-
-    try{
-        await newUser.save();
-
-        res.render("secrets");
-    }
-    catch(error){
-        console.log(error);
-    }
 });
 
 app.post("/login", async function(req,res){
@@ -60,18 +61,29 @@ app.post("/login", async function(req,res){
         const foundUser= await User.findOne({email: username});
         //console.log(foundUser.email);
 
-        if(foundUser.password === password){
+        /*if(foundUser.password === password){
             console.log(`${username} User verified.`);
             res.render("secrets");
         }
         else{
             console.log(`Error authentication failed!`);
-        }
+        }*/
+
+        bcrypt.compare(password, foundUser.password, function(err, result) {
+            // result == true
+            if(result==true){
+                console.log(`${username} User verified.`);
+                res.render("secrets");
+            }
+            else{
+                console.log(`Error authentication failed!`);
+            }
+        });
     }
     catch(error){
         console.log(error);
     }
-})
+});
 
 app.listen(port, function(){
     console.log(`Server started on port ${port}.`);
