@@ -27,7 +27,9 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-mongoose.connect("mongodb://127.0.0.1:27017/userDB");
+//connect mongoDB with mongoose
+import { connectDB } from './DB/mongo.js';
+connectDB();
 
 const userSchema= new mongoose.Schema({
     email: String,
